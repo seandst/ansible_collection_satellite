@@ -1,3 +1,6 @@
+# No analog for these two tasks exists in the system collection. It would be worth
+# considering either adding a role just for this or maybe augmenting system_repositories
+# to handle this "clean out everything but redhat.repo" case.
 - name: RHSM Subscribe | Get a list of all the files in /etc/yum.repos.d
   find:
     paths: /etc/yum.repos.d
@@ -12,19 +15,24 @@
   with_items: "{{ repo_files.files }}"
 
 - name: RHSM Subscribe | Using an Activation Key for register to Red Hat CDN
-  redhat_subscription:
-    state: present
-    activationkey: "{{ satellite_rhn_activation_key }}"
-    org_id: "{{ satellite_rhn_org }}"
-    pool: "{{ satellite_rhn_pool_id }}"
-    force_register: true
+  include_role:
+    name: oasis_roles.system.rhsm
+  vars:
+    rhsm_activationkey: "{{ satellite_rhn_activation_key }}"
+    rhsm_org_id: "{{ satellite_rhn_org }}"
+    # If actually using the hex pool id, I recommend switching to rhsm_pool_ids:
+    # rhsm_pool_ids:
+    #   - "{{ satellite_rhn_pool_id }}"
+    rhsm_pool: "{{ satellite_rhn_pool_id }}"
+    rhsm_force_register: true
   when: satellite_rhn_activation_key|length > 0
 
 - name: RHSM Subscribe | Using an Username for register to Red Hat CDN
-  redhat_subscription:
-    state: present
-    username: "{{ satellite_rhn_username }}"
-    password: "{{ satellite_rhn_password }}"
-    pool: "{{ satellite_rhn_pool_id }}"
-    force_register: true
+  include_role:
+    name: oasis_roles.system.rhsm
+  vars:
+    rhsm_username: "{{ satellite_rhn_username }}"
+    rhsm_password: "{{ satellite_rhn_password }}"
+    rhsm_pool: "{{ satellite_rhn_pool_id }}"
+    rhsm_force_register: true
   when: satellite_rhn_username|length > 0

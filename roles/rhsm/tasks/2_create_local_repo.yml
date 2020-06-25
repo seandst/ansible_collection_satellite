@@ -1,56 +1,76 @@
-- name: Create Local Repo | Get a list of all the files in /etc/yum.repos.d
-  find:
-    paths: /etc/yum.repos.d
-    patterns: "*.repo"
-  register: repo_files
+# The two tasks to clean out non-redhat .repo files are already in the first task yaml.
+# Given the conditionals in main.yml, it is redundant to list them here.
 
-- name: Create Local Repo | Remove files in /etc/yum.repos.d not redhat.repo
-  file:
-    path: "{{ item.path }}"
-    state: absent
-  when: item.path != "/etc/yum.repos.d/redhat.repo"
-  with_items: "{{ repo_files.files }}"
-
+# The use of the "file" parameter currently does nothing, so all of these repo configs
+# end up in separate files matching the repo name, for example the first entry would
+# create /etc/yum.repos.d/rhel-7-server-rpms.repo. I've got a fix ready to for the
+# system collection that we're hoping to get into a release this week.
 - name: Create Local Repo | Create disconnected.repo
-  file:
-    path: /etc/yum.repos.d/disconnected.repo
-    owner: root
-    group: root
-    mode: '0644'
-    state: touch
+  include_role:
+    name: oasis_roles.system.system_repositories
+  vars:
+    system_repositories_configs:
+      - name: rhel-7-server-rpms
+        baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/os/"
+        description: Red Hat Enterprise Linux 7 Server (RPMs)
+        enabled: true
+        gpgcheck: false
+        file: disconnected
+      - name: "rhel-7-server-satellite-{{ satellite_version }}-rpms"
+        baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/satellite/{{ satellite_version }}/os/"
+        description: Red Hat Satellite {{ satellite_version }} (for RHEL 7 Server) (RPMs)
+        enabled: true
+        gpgcheck: false
+        file: disconnected
+      - name: rhel-7-server-ansible-2.8-rpms
+        baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/ansible/2.8/os/"
+        description: Red Hat Ansible Engine 2.8 RPMs for Red Hat Enterprise Linux 7 Server x86_64
+        enabled: true
+        gpgcheck: false
+        file: disconnected
+      - name: rhel-7-server-satellite-maintenance-6-rpms
+        baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/sat-maintenance/6/os/"
+        description: Red Hat Satellite Maintenance 6 for RHEL 7 Server RPMs x86_64
+        enabled: true
+        gpgcheck: false
+        file: disconnected
+      - name: rhel-server-rhscl-7-rpms
+        baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/rhscl/1/os/"
+        description: Red Hat Software Collections RPMs for Red Hat Enterprise Linux 7 Server x86_64 7Server
+        enabled: true
+        gpgcheck: false
+        file: disconnected
 
-- name: Create Local Repo | Populate disconnected repo
-  blockinfile:
-    path: /etc/yum.repos.d/disconnected.repo
-    # yamllint disable rule:line-length
-    block: |
-      [rhel-7-server-rpms]
-      baseurl = "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/os/"
-      name = Red Hat Enterprise Linux 7 Server (RPMs)
-      enabled = 1
-      gpgcheck = 0
-
-      [rhel-7-server-satellite-{{ satellite_version }}-rpms]
-      baseurl = "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/satellite/{{ satellite_version }}/os/"
-      name = Red Hat Satellite {{ satellite_version }} (for RHEL 7 Server) (RPMs)
-      enabled = 1
-      gpgcheck = 0
-
-      [rhel-7-server-ansible-2.8-rpms]
-      baseurl = "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/ansible/2.8/os/"
-      name = Red Hat Ansible Engine 2.8 RPMs for Red Hat Enterprise Linux 7 Server x86_64
-      enabled = 1
-      gpgcheck = 0
-
-      [rhel-7-server-satellite-maintenance-6-rpms]
-      baseurl = "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/sat-maintenance/6/os/"
-      name = Red Hat Satellite Maintenance 6 for RHEL 7 Server RPMs x86_64
-      enabled = 1
-      gpgcheck = 0
-
-      [rhel-server-rhscl-7-rpms]
-      baseurl = "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/rhscl/1/os/"
-      name = Red Hat Software Collections RPMs for Red Hat Enterprise Linux 7 Server x86_64 7Server
-      enabled = 1
-      gpgcheck = 0
-    # yamllint enable
+# Alternate version, using loop
+- name: Create Local Repo | Create disconnected.repo
+  include_role:
+    name: oasis_roles.system.system_repositories
+  vars:
+    system_repositories_configs:
+      - name: "{{ repo.name }}"
+        baseurl: "{{ repo.baseurl }}"
+        description: "{{ repo.description }}"
+        enabled: true
+        gpgcheck: false
+        file: disconnected
+  # Using loop this way means that a group var could be used here, containing just this array,
+  # and that all repos defined in that var will end up enabled with no gpgcheck in disconnected.repo
+  # loop: "{{ satellite_disconnected_repos }}"
+  loop_control:
+    loop_var: repo
+  loop:
+    - name: rhel-7-server-rpms
+      baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/os/"
+      description: Red Hat Enterprise Linux 7 Server (RPMs)
+    - name: "rhel-7-server-satellite-{{ satellite_version }}-rpms"
+      baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/satellite/{{ satellite_version }}/os/"
+      description: Red Hat Satellite {{ satellite_version }} (for RHEL 7 Server) (RPMs)
+    - name: rhel-7-server-ansible-2.8-rpms
+      baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/ansible/2.8/os/"
+      description: Red Hat Ansible Engine 2.8 RPMs for Red Hat Enterprise Linux 7 Server x86_64
+    - name: rhel-7-server-satellite-maintenance-6-rpms
+      baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/sat-maintenance/6/os/"
+      description: Red Hat Satellite Maintenance 6 for RHEL 7 Server RPMs x86_64
+    - name: rhel-server-rhscl-7-rpms
+      baseurl: "{{ satellite_content_source }}/content/dist/rhel/server/7/7Server/x86_64/rhscl/1/os/"
+      description: Red Hat Software Collections RPMs for Red Hat Enterprise Linux 7 Server x86_64 7Server
