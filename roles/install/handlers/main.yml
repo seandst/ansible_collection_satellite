@@ -1,6 +1,3 @@
-- name: activate_pref_tuning
-  command: satellite-installer
-
 - name: firewalld_reload
   systemd:
     name: firewalld

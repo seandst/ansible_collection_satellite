@@ -20,17 +20,6 @@
 
 - meta: flush_handlers
 
-- name: install | move performance tuning yaml to
-    /etc/foreman-installer/custom-hiera.yaml
-  copy:
-    src: files/custom-hiera.yaml
-    dest: /etc/foreman-installer/custom-hiera.yaml
-    owner: root
-    group: root
-  notify: activate_pref_tuning
-
-- meta: flush_handlers
-
 #- name: install | run foreman-rake to import scap content
 #  shell: >-
 #    foreman-rake foreman_openscap:bulk_upload:default  # noqa 305
